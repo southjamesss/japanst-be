@@ -92,10 +92,35 @@ async function getFileAttachmentById(id) {
 
 async function listFileAttachments(_req, res, next) {
   try {
+    const conditions = [];
+    const values = [];
+
+    if (_req.query.module) {
+      conditions.push("module = ?");
+      values.push(_req.query.module);
+    }
+
+    if (_req.query.ref_id) {
+      const refId = parseId(_req.query.ref_id, "ref_id");
+      conditions.push("ref_id = ?");
+      values.push(refId);
+    }
+
+    if (_req.query.uploaded_by) {
+      const uploadedBy = parseId(_req.query.uploaded_by, "uploaded_by");
+      conditions.push("uploaded_by = ?");
+      values.push(uploadedBy);
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
     const [rows] = await pool.query(
       `SELECT id, module, ref_id, file_name, file_path, file_type, file_size, uploaded_by, created_at
        FROM ${tableName}
-       ORDER BY id DESC`
+       ${whereClause}
+       ORDER BY id DESC`,
+      values
     );
 
     res.status(200).json({
@@ -171,7 +196,9 @@ async function updateFileAttachment(req, res, next) {
     const values = columns.map((column) => payload[column]);
 
     const [result] = await pool.query(
-      `UPDATE ${tableName} SET ${assignments} WHERE id = ?`,
+      `UPDATE ${tableName}
+       SET ${assignments}
+       WHERE id = ?`,
       [...values, id]
     );
 
